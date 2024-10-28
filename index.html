@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+
+        <style>
+            html,
+            body {
+                background-color: #333;
+                height: 100%;
+                margin: 0;
+                display: flex;
+                justify-content: center;
+            }
+
+            canvas {
+                image-rendering: pixelated;
+                aspect-ratio: 240 / 224;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas width="240" height="224"></canvas>
+        <div style="display: none">
+            <img id="level" src="img/stage5.png" />
+            <img id="bomberman" src="img/bomberman.png" />
+            <img id="wall" src="img/wall5.png" />
+            <img id="bomb" src="img/bomb.png" />
+            <img id="explosion" src="img/explosion.png" />
+        </div>
+    </body>
+    <script src="index.js"></script>
+</html>
