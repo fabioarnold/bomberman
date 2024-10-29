@@ -10,10 +10,8 @@ let keys = {};
 document.onkeydown = (e) => (keys[e.keyCode] = true);
 document.onkeyup = (e) => (keys[e.keyCode] = false);
 
-let bombs = [
-  { x: 48, y: 48 },
-  { x: 112, y: 64 },
-];
+let bombs = [];
+let explosions = [];
 
 let walls = [
   { x: 48, y: 32 },
@@ -92,10 +90,23 @@ function drawPlayer() {
   ctx.restore();
 }
 
+function updateBombs() {
+  for (let i = 0; i < bombs.length; i++) {
+    const bomb = bombs[i];
+    if (performance.now() - bomb.t > 2000) {
+      addExplosion(bomb.x, bomb.y, 2);
+      bombs.splice(i, 1);
+      i--;
+    }
+  }
+}
+
 function drawBombs() {
+  updateBombs();
   const frames = [0, 1, 2, 1];
-  const frame = frames[Math.round(performance.now() / 60) % frames.length];
   for (const bomb of bombs) {
+    let frame = Math.round((performance.now() - bomb.t) / 60);
+    frame = frames[frame % frames.length];
     ctx.drawImage(img_bomb, frame * 16, 0, 16, 16, bomb.x, bomb.y, 16, 16);
   }
 }
@@ -103,6 +114,65 @@ function drawBombs() {
 function drawWalls() {
   for (const wall of walls) {
     ctx.drawImage(img_wall, 0, 0, 16, 16, wall.x, wall.y, 16, 16);
+  }
+}
+
+function addExplosion(x, y, len) {
+  const t = performance.now();
+  addExplosionTile({ x, y, sx: 0, rot: 0, t });
+  for (let rot = 0; rot < 4; rot++) {
+    const dx = Math.sin((rot * Math.PI) / 2);
+    const dy = -Math.cos((rot * Math.PI) / 2);
+    for (let i = 1; i <= len; i++) {
+      const e = { x: x + dx * i * 16, y: y + dy * i * 16, sx: 16, rot, t };
+      let ok = addExplosionTile(e);
+      if (!ok || i === len) {
+        e.sx = 32;
+        break;
+      }
+    }
+  }
+}
+
+function addExplosionTile(e) {
+  const check = { x: e.x, y: e.y, w: 1, h: 1 };
+  for (let collider of colliders) {
+    if (rectsOverlap(check, collider)) return false;
+  }
+  for (let i = 0; i < walls.length; i++) {
+    const wall = walls[i];
+    const wall_rect = { ...wall, w: 16, h: 16 };
+    if (rectsOverlap(check, wall_rect)) {
+      walls.splice(i, 1);
+      explosions.push(e);
+      return false;
+    }
+  }
+  explosions.push(e);
+  return true;
+}
+
+function updateExplosions() {
+  for (let i = 0; i < explosions.length; i++) {
+    const explosion = explosions[i];
+    if (performance.now() - explosion.t > 500) {
+      explosions.splice(i, 1);
+      i--;
+    }
+  }
+}
+
+function drawExplosions() {
+  updateExplosions();
+  const frames = [0, 1, 2, 3, 4, 3, 2, 1, 0];
+  for (let e of explosions) {
+    ctx.save();
+    ctx.translate(e.x + 8, e.y + 8);
+    ctx.rotate((e.rot * Math.PI) / 2);
+    let frame = Math.round((performance.now() - e.t) / 60);
+    frame = frames[frame % frames.length];
+    ctx.drawImage(img_explosion, e.sx, frame * 16, 16, 16, -8, -8, 16, 16);
+    ctx.restore();
   }
 }
 
@@ -170,9 +240,22 @@ function moveY(move) {
   return true;
 }
 
+function placeBomb() {
+  const x = Math.round(player_x / 16) * 16;
+  const y = Math.round(player_y / 16) * 16;
+  for (const bomb of bombs) {
+    if (bomb.x === x && bomb.y === y) return;
+  }
+  bombs.push({ x, y, t: performance.now() });
+}
+
+let old_space = false;
+
 function draw() {
   let dir_x = 0;
   let dir_y = 0;
+  if (keys[32] && !old_space) placeBomb();
+  old_space = keys[32];
   if (keys[37]) dir_x -= 1;
   if (keys[38]) dir_y -= 1;
   if (keys[39]) dir_x += 1;
@@ -222,7 +305,7 @@ function draw() {
 
   drawBombs();
   drawWalls();
-  drawExplosion();
+  drawExplosions();
   drawPlayer();
 
   window.requestAnimationFrame(draw);
